@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { User } from './schemas/user.schema';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import ApiResponse from '../../utils/ApiResponse';
 
 @Injectable()
 export class AuthService {
@@ -21,10 +22,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Check if user is active
-    if (!user.isActive) {
-      throw new UnauthorizedException('User account is inactive');
-    }
+    // // Check if user is active
+    // if (!user.isActive) {
+    //   throw new UnauthorizedException('User account is inactive');
+    // }
 
     // Simple password comparison (no encryption)
     if (user.password !== password) {
@@ -32,14 +33,13 @@ export class AuthService {
     }
 
     // Return user data without password
-    return {
-      message: 'Login successful',
+    return ApiResponse.success('Login successful', {
       user: {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
       },
-    };
+    });
   }
 
   async createUser(createUserDto: CreateUserDto) {
@@ -55,14 +55,13 @@ export class AuthService {
     const user = new this.userModel({ email, password, name });
     await user.save();
 
-    return {
-      message: 'User created successfully',
+    return ApiResponse.created('User created successfully', {
       user: {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
       },
-    };
+    });
   }
 
   async createDefaultAdmin() {
@@ -74,14 +73,13 @@ export class AuthService {
     const existingAdmin = await this.userModel.findOne({ email: defaultEmail }).exec();
     
     if (existingAdmin) {
-      return {
-        message: 'Default admin user already exists',
+      return ApiResponse.success('Default admin user already exists', {
         user: {
           id: existingAdmin._id.toString(),
           email: existingAdmin.email,
           name: existingAdmin.name,
         },
-      };
+      });
     }
 
     // Create default admin user
@@ -92,13 +90,12 @@ export class AuthService {
     });
     await admin.save();
 
-    return {
-      message: 'Default admin user created successfully',
+    return ApiResponse.created('Default admin user created successfully', {
       user: {
         id: admin._id.toString(),
         email: admin.email,
         name: admin.name,
       },
-    };
+    });
   }
 }
