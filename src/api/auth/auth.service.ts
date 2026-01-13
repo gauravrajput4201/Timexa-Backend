@@ -1,15 +1,18 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from './schemas/user.schema';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import ApiResponse from '../../utils/ApiResponse';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
+    private jwtService: JwtService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -19,7 +22,7 @@ export class AuthService {
     const user = await this.userModel.findOne({ email }).exec();
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new NotFoundException('user not exist with this email');
     }
 
     // // Check if user is active
@@ -28,9 +31,18 @@ export class AuthService {
     // }
 
     // Simple password comparison (no encryption)
-    if (user.password !== password) {
+
+    const isPasswordValid = await this.comparePassword(password, user.password);
+    if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password');
     }
+
+    const payload = {
+      sub: user.email,
+      username: user.name,
+      userId: user._id.toString(),
+    };
+    const token = await this.jwtService.signAsync(payload);
 
     // Return user data without password
     return ApiResponse.success('Login successful', {
@@ -39,6 +51,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
       },
+      token,
     });
   }
 
@@ -51,8 +64,13 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
+
+    // const hashPassword = await bcrypt.hash(password, saltOrRounds);
+    const hashedPassword = await this.hashPassword(password);
+
     // Create new user
-    const user = new this.userModel({ email, password, name });
+    const user = new this.userModel({ email, password: hashedPassword, name });
+
     await user.save();
 
     return ApiResponse.created('User created successfully', {
@@ -70,14 +88,19 @@ export class AuthService {
     const defaultName = 'Admin';
 
     // Check if admin already exists
-    const existingAdmin = await this.userModel.findOne({ email: defaultEmail }).exec();
-    
+    const existingAdmin = await this.userModel
+      .findOne({ email: defaultEmail })
+      .exec();
+
+
+
     if (existingAdmin) {
       return ApiResponse.success('Default admin user already exists', {
         user: {
           id: existingAdmin._id.toString(),
           email: existingAdmin.email,
           name: existingAdmin.name,
+          password: defaultPassword,
         },
       });
     }
@@ -85,9 +108,10 @@ export class AuthService {
     // Create default admin user
     const admin = new this.userModel({
       email: defaultEmail,
-      password: defaultPassword,
+      password: await this.hashPassword(defaultPassword),
       name: defaultName,
     });
+
     await admin.save();
 
     return ApiResponse.created('Default admin user created successfully', {
@@ -95,7 +119,19 @@ export class AuthService {
         id: admin._id.toString(),
         email: admin.email,
         name: admin.name,
+        password: defaultPassword,
       },
     });
   }
+  async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
+  }
+
+  async comparePassword(password: string, hash: string): Promise<boolean> {
+    return bcrypt.compare(password, hash);
+  }
 }
+
+
+
+

@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { AuthModule } from './api/auth/auth.module';
 import configuration from './config/configuration';
 import { MongooseConfigService } from './config/mongoose.config';
+import { JwtService } from '@nestjs/jwt';
+import { UsersModule } from './api/users/users.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { MongooseConfigService } from './config/mongoose.config';
     }),
     
     AuthModule,
+    UsersModule,
+    
   ],
   controllers: [AppController],
   providers: [AppService],
