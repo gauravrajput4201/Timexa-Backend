@@ -8,13 +8,14 @@ import configuration from './config/configuration';
 import { MongooseConfigService } from './config/mongoose.config';
 import { JwtService } from '@nestjs/jwt';
 import { UsersModule } from './api/users/users.module';
+import { AttendanceModule } from './api/attendance/attendance.module';
 
 @Module({
   imports: [
     // Environment Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
       load: [configuration],
       cache: true,
     }),
@@ -26,6 +27,7 @@ import { UsersModule } from './api/users/users.module';
     
     AuthModule,
     UsersModule,
+    AttendanceModule,
     
   ],
   controllers: [AppController],

@@ -7,6 +7,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import ApiResponse from '../../utils/ApiResponse';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { RoleType } from 'src/enums/common.enum';
 
 @Injectable()
 export class AuthService {
@@ -50,6 +51,7 @@ export class AuthService {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
+        role: user.role,
       },
       token,
     });
@@ -63,13 +65,11 @@ export class AuthService {
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
-
-
-    // const hashPassword = await bcrypt.hash(password, saltOrRounds);
+    
     const hashedPassword = await this.hashPassword(password);
 
     // Create new user
-    const user = new this.userModel({ email, password: hashedPassword, name });
+    const user = new this.userModel({ email, password: hashedPassword, name, role: RoleType.user });
 
     await user.save();
 
@@ -78,6 +78,7 @@ export class AuthService {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
+        role: user.role,
       },
     });
   }
@@ -86,6 +87,7 @@ export class AuthService {
     const defaultEmail = 'admin@admin.com';
     const defaultPassword = 'Admin@123';
     const defaultName = 'Admin';
+    const defaultRole = RoleType.admin;
 
     // Check if admin already exists
     const existingAdmin = await this.userModel
@@ -110,6 +112,7 @@ export class AuthService {
       email: defaultEmail,
       password: await this.hashPassword(defaultPassword),
       name: defaultName,
+      role: defaultRole,
     });
 
     await admin.save();
