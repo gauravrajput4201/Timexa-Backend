@@ -14,6 +14,64 @@ export class AttendanceService {
     private attendanceModel: Model<AttendanceLog>,
   ) {}
 
+
+  async getUserAttendanceLogs(
+    userId: string,
+    page: number = 1,
+    limit: number = 10,
+    sortBy: 'date' | 'totalMinutes' = 'date',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ) {
+    this.validateUserId(userId);
+
+    // Validate pagination params
+    const validPage = Math.max(1, page);
+    const validLimit = Math.min(Math.max(1, limit), 100); 
+    const skip = (validPage - 1) * validLimit;
+
+    const sortObj: any = {};
+    sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    const totalRecords = await this.attendanceModel.countDocuments({
+      userId: new Types.ObjectId(userId),
+    });
+
+    const logs = await this.attendanceModel
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort(sortObj)
+      .skip(skip)
+      .limit(validLimit)
+      .lean();
+
+    const formattedLogs = logs.map((log) => ({
+      id: log._id.toString(),
+      userId: log.userId.toString(),
+      date: log.date,
+      sessions: log.sessions,
+      totalMinutes: log.totalMinutes,
+      entryExitTotalMinutes: log.entryExitTotalMinutes,
+    }));
+
+    const totalPages = Math.ceil(totalRecords / validLimit);
+
+    return ApiResponse.success('Attendance logs retrieved successfully', {
+      attendanceLogs: formattedLogs,
+      pagination: {
+        currentPage: validPage,
+        totalPages,
+        totalRecords,
+        recordsPerPage: validLimit,
+        hasNextPage: validPage < totalPages,
+        hasPreviousPage: validPage > 1,
+      },
+    });
+  }
+
+
+
+
+
+
   private normalizeDate(date: Date) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   }
