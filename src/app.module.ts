@@ -9,6 +9,7 @@ import { MongooseConfigService } from './config/mongoose.config';
 import { JwtService } from '@nestjs/jwt';
 import { UsersModule } from './api/users/users.module';
 import { AttendanceModule } from './api/attendance/attendance.module';
+import { MailerModule } from './api/mailer/mailer.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AttendanceModule } from './api/attendance/attendance.module';
     AuthModule,
     UsersModule,
     AttendanceModule,
+    MailerModule,
     
   ],
   controllers: [AppController],

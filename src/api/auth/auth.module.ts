@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User, UserSchema } from './schemas/user.schema';
 import { JwtModule } from '@nestjs/jwt';
+import { MailerModule } from '../mailer/mailer.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { JwtModule } from '@nestjs/jwt';
         // signOptions: { expiresIn: configService.get('jwt.expiresIn') },
       }),
     }),
+    MailerModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

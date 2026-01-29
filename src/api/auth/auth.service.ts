@@ -8,12 +8,14 @@ import ApiResponse from '../../utils/ApiResponse';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RoleType } from 'src/enums/common.enum';
+import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     private jwtService: JwtService,
+    private mailerService: MailerService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -25,13 +27,6 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('user not exist with this email');
     }
-
-    // // Check if user is active
-    // if (!user.isActive) {
-    //   throw new UnauthorizedException('User account is inactive');
-    // }
-
-    // Simple password comparison (no encryption)
 
     const isPasswordValid = await this.comparePassword(password, user.password);
     if (!isPasswordValid) {
@@ -72,6 +67,14 @@ export class AuthService {
     const user = new this.userModel({ email, password: hashedPassword, name, role: RoleType.user });
 
     await user.save();
+
+    // Send welcome email
+    try {
+      await this.mailerService.sendWelcomeEmail(user.email, user.name);
+    } catch (error) {
+      // Log error but don't fail user creation
+      console.error('Failed to send welcome email:', error.message);
+    }
 
     return ApiResponse.created('User created successfully', {
       user: {
