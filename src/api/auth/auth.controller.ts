@@ -5,6 +5,8 @@ import { LoginDto, loginSchema } from './dto/login.dto';
 import { CreateUserDto, createUserSchema } from './dto/create-user.dto';
 import ApiResponse from '../../utils/ApiResponse';
 import { JoiValidationPipe } from '../../pipes/joi-validation.pipe';
+import { ForgotPasswordOtpDto, forgotPasswordOtpSchema } from './dto/forgot-password.dto';
+import { PasswordResetDto, passwordResetSchema } from './dto/password-reset.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -29,4 +31,16 @@ export class AuthController {
   ): Promise<ApiResponse> {
     return await this.authService.createUser(createUserDto);
   }
+
+  @Post('forgot-password-otp')
+  @UsePipes(new JoiValidationPipe(forgotPasswordOtpSchema))
+  async forgotPassword(@Body()  forgotPasswordDto: ForgotPasswordOtpDto): Promise<ApiResponse> {
+    return await this.authService.forgotPasswordOtp(forgotPasswordDto);
+  }
+
+  @Post('password-reset')
+  @UsePipes(new JoiValidationPipe(passwordResetSchema))
+  async passwordReset(@Body()  passwordResetDto: PasswordResetDto): Promise<ApiResponse> {
+    return await this.authService.passwordReset(passwordResetDto);
+  } 
 }

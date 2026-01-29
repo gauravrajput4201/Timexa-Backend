@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersModule } from './api/users/users.module';
 import { AttendanceModule } from './api/attendance/attendance.module';
 import { MailerModule } from './api/mailer/mailer.module';
+import { VerificationModuleModule } from './api/verification-module/verification-module.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { MailerModule } from './api/mailer/mailer.module';
     UsersModule,
     AttendanceModule,
     MailerModule,
+    VerificationModuleModule,
     
   ],
   controllers: [AppController],

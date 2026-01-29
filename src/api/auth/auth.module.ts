@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { User, UserSchema } from './schemas/user.schema';
 import { JwtModule } from '@nestjs/jwt';
 import { MailerModule } from '../mailer/mailer.module';
+import { VerificationModuleModule } from '../verification-module/verification-module.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { MailerModule } from '../mailer/mailer.module';
       }),
     }),
     MailerModule,
+    VerificationModuleModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

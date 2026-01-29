@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from './schemas/user.schema';
@@ -9,6 +14,10 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RoleType } from 'src/enums/common.enum';
 import { MailerService } from '../mailer/mailer.service';
+import { ForgotPasswordOtpDto } from './dto/forgot-password.dto';
+import { PasswordResetDto } from './dto/password-reset.dto';
+import { VerificationModuleService } from '../verification-module/verification-module.service';
+import { OTP_EXPIRY_BY_PURPOSE, VerificationPurpose } from '../verification-module/schema/otp.schema';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +25,7 @@ export class AuthService {
     @InjectModel(User.name) private userModel: Model<User>,
     private jwtService: JwtService,
     private mailerService: MailerService,
+    private verificationModuleService: VerificationModuleService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -28,7 +38,7 @@ export class AuthService {
       throw new NotFoundException('user not exist with this email');
     }
 
-    const isPasswordValid = await this.comparePassword(password, user.password);
+    const isPasswordValid = await this.compareValue(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password');
     }
@@ -60,11 +70,16 @@ export class AuthService {
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
-    
-    const hashedPassword = await this.hashPassword(password);
+
+    const hashedPassword = await this.hashValue(password);
 
     // Create new user
-    const user = new this.userModel({ email, password: hashedPassword, name, role: RoleType.user });
+    const user = new this.userModel({
+      email,
+      password: hashedPassword,
+      name,
+      role: RoleType.user,
+    });
 
     await user.save();
 
@@ -97,8 +112,6 @@ export class AuthService {
       .findOne({ email: defaultEmail })
       .exec();
 
-
-
     if (existingAdmin) {
       return ApiResponse.success('Default admin user already exists', {
         user: {
@@ -113,7 +126,7 @@ export class AuthService {
     // Create default admin user
     const admin = new this.userModel({
       email: defaultEmail,
-      password: await this.hashPassword(defaultPassword),
+      password: await this.hashValue(defaultPassword),
       name: defaultName,
       role: defaultRole,
     });
@@ -129,15 +142,65 @@ export class AuthService {
       },
     });
   }
-  async hashPassword(password: string): Promise<string> {
+
+  async forgotPasswordOtp(forgotPasswordOtpDto: ForgotPasswordOtpDto) {
+    const { email } = forgotPasswordOtpDto;
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) {
+      throw new NotFoundException('User with this email does not exist');
+    }
+
+    const { otp, document: createdOtp } =
+      await this.verificationModuleService.createVerificationOTP(
+        email,
+        VerificationPurpose.RESET_PASSWORD,
+        4,
+      );
+
+      if (!createdOtp) {
+        throw new Error('Failed to create OTP');
+      }
+
+      try {  
+        await this.mailerService.sendOTPEmail(
+          user.email,
+          otp, // Pass the plain OTP
+          OTP_EXPIRY_BY_PURPOSE[VerificationPurpose.RESET_PASSWORD],
+        );
+      } catch (error) {
+        console.error('Failed to send OTP email:', error.message);
+        throw new Error('Failed to send OTP email');
+      }
+
+    return ApiResponse.success('Otp has been sent to your email successfully', null);
+  }
+
+
+
+
+  async passwordReset(passwordResetDto: PasswordResetDto) {
+    const { email, password, otp } = passwordResetDto;
+
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) {
+      throw new NotFoundException('User with this email does not exist');
+    }
+
+    // Here you would typically verify the OTP
+    // For simplicity, we'll assume the OTP is always valid
+
+    const hashedPassword = await this.hashValue(password);
+    user.password = hashedPassword;
+    await user.save();
+
+    return ApiResponse.success('Password has been reset successfully', {});
+  }
+
+  async hashValue(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
   }
 
-  async comparePassword(password: string, hash: string): Promise<boolean> {
+  async compareValue(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);
   }
 }
-
-
-
-

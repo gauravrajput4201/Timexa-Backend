@@ -38,6 +38,7 @@ export class MailerService {
       throw new Error(`Failed to send email: ${error.message}`);
     }
   }
+
   private getLogoBase64(): string {
     try {
       const logoPath = path.join(__dirname, '../../public/logo.png'); // Adjust path
@@ -57,6 +58,19 @@ export class MailerService {
       context: {
         name: userName,
         logoUrl: logoUrl || this.getLogoBase64(),
+        year: new Date().getFullYear(),
+      },
+    });
+  }
+  async sendOTPEmail(to: string, otp: string, time: number|string, logoUrl?: string) {
+    return this.sendTemplateEmail({
+      to,
+      subject: 'Your Timexa OTP Code',
+      template: 'otp',
+      context: {
+        otp: otp, // Add the OTP to the context
+        logoUrl: logoUrl || this.getLogoBase64(),
+        minuet: time,
         year: new Date().getFullYear(),
       },
     });
