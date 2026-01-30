@@ -5,7 +5,10 @@ import { HydratedDocument, Types  } from "mongoose";
 export type AttendanceLogDocument = HydratedDocument<AttendanceLog>;
 
 
-@Schema({ timestamps: true })
+@Schema({ 
+  timestamps: true,
+  // autoIndex controlled globally by NODE_ENV
+})
 export class AttendanceLog {
   @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
   userId: Types.ObjectId;

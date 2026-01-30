@@ -20,6 +20,7 @@ import { VerificationModuleModule } from './api/verification-module/verification
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
       load: [configuration],
       cache: true,
+      expandVariables: true, // Enable variable expansion
     }),
     
     // MongoDB Connection with dedicated config service

@@ -3,7 +3,10 @@ import { HydratedDocument } from 'mongoose';
 
 export type UserDocument = HydratedDocument<User>;
 
-@Schema({ timestamps: true })
+@Schema({ 
+  timestamps: true,
+  // autoIndex controlled globally by NODE_ENV
+})
 export class User {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email: string;

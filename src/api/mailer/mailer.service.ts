@@ -41,12 +41,14 @@ export class MailerService {
 
   private getLogoBase64(): string {
     try {
-      const logoPath = path.join(__dirname, '../../public/logo.png'); // Adjust path
+      // Use process.cwd() to get consistent path in both dev and production
+      const logoPath = path.join(process.cwd(), 'src', 'public', 'logo.png');
       const logoBuffer = fs.readFileSync(logoPath);
       return `data:image/png;base64,${logoBuffer.toString('base64')}`;
     } catch (error) {
       this.logger.warn('Logo file not found, using placeholder');
       return 'https://via.placeholder.com/40';
+      
     }
   }
 
@@ -62,6 +64,7 @@ export class MailerService {
       },
     });
   }
+
   async sendOTPEmail(to: string, otp: string, time: number|string, logoUrl?: string) {
     return this.sendTemplateEmail({
       to,

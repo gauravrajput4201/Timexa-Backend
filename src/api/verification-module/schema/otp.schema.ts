@@ -1,6 +1,5 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument } from "mongoose";
-
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
 
 export type VerificationDocument = HydratedDocument<Verification>;
 
@@ -22,38 +21,40 @@ export enum VerificationStatus {
   EXPIRED = 'EXPIRED',
 }
 
-@Schema({
+export const MAX_OTP_ATTEMPTS = 3;
+
+@Schema({ 
   timestamps: true,
+  // autoIndex controlled globally by NODE_ENV
 })
 export class Verification {
   @Prop({ required: true, index: true })
-  identifier: string; // email or phone
+  identifier: string;
 
-  @Prop({
-    required: true,
-    enum: VerificationPurpose,
-    index: true,
-  })
+  @Prop({ required: true, enum: VerificationPurpose, index: true })
   purpose: VerificationPurpose;
 
   @Prop({ required: true })
-  otp: string; 
+  hashedValue: string;
 
-  @Prop({
-    required: true,
-    index: true,
-  })
+  @Prop({ required: true })
   expiresAt: Date;
 
-  @Prop({ default: 3 })
+  @Prop({ default: 0 })
   attemptCount: number;
 
-  @Prop({
-    default: VerificationStatus.ACTIVE,
-    enum: VerificationStatus,
-  })
+  @Prop({ default: VerificationStatus.ACTIVE, enum: VerificationStatus })
   status: VerificationStatus;
 }
 
 export const VerificationSchema = SchemaFactory.createForClass(Verification);
+
+// TTL index - MongoDB will automatically delete documents after expiresAt time
 VerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// Compound index for faster queries
+VerificationSchema.index({
+  identifier: 1,
+  purpose: 1,
+  status: 1,
+});

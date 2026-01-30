@@ -12,6 +12,6 @@ import { Verification, VerificationSchema } from './schema/otp.schema';
   ],
   controllers: [VerificationModuleController],
   providers: [VerificationModuleService],
-  exports: [VerificationModuleService], // Export if other modules need it
+  exports: [VerificationModuleService],
 })
 export class VerificationModuleModule {}

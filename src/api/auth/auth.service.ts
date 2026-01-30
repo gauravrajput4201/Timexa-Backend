@@ -18,6 +18,7 @@ import { ForgotPasswordOtpDto } from './dto/forgot-password.dto';
 import { PasswordResetDto } from './dto/password-reset.dto';
 import { VerificationModuleService } from '../verification-module/verification-module.service';
 import { OTP_EXPIRY_BY_PURPOSE, VerificationPurpose } from '../verification-module/schema/otp.schema';
+import { hashValue, compareValue } from '../../utils/crypto.util';
 
 @Injectable()
 export class AuthService {
@@ -38,7 +39,7 @@ export class AuthService {
       throw new NotFoundException('user not exist with this email');
     }
 
-    const isPasswordValid = await this.compareValue(password, user.password);
+    const isPasswordValid = await compareValue(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password');
     }
@@ -71,7 +72,7 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
-    const hashedPassword = await this.hashValue(password);
+    const hashedPassword = await hashValue(password);
 
     // Create new user
     const user = new this.userModel({
@@ -126,7 +127,7 @@ export class AuthService {
     // Create default admin user
     const admin = new this.userModel({
       email: defaultEmail,
-      password: await this.hashValue(defaultPassword),
+      password: await hashValue(defaultPassword),
       name: defaultName,
       role: defaultRole,
     });
@@ -144,17 +145,17 @@ export class AuthService {
   }
 
   async forgotPasswordOtp(forgotPasswordOtpDto: ForgotPasswordOtpDto) {
-    const { email } = forgotPasswordOtpDto;
+    const { email, length } = forgotPasswordOtpDto;
     const user = await this.userModel.findOne({ email }).exec();
     if (!user) {
-      throw new NotFoundException('User with this email does not exist');
+      return ApiResponse.success('Check your email for the OTP.', null);
     }
 
     const { otp, document: createdOtp } =
       await this.verificationModuleService.createVerificationOTP(
         email,
         VerificationPurpose.RESET_PASSWORD,
-        4,
+        length??4,
       );
 
       if (!createdOtp) {
@@ -172,7 +173,7 @@ export class AuthService {
         throw new Error('Failed to send OTP email');
       }
 
-    return ApiResponse.success('Otp has been sent to your email successfully', null);
+    return  ApiResponse.success('Check your email for the OTP.', null);
   }
 
 
@@ -183,24 +184,26 @@ export class AuthService {
 
     const user = await this.userModel.findOne({ email }).exec();
     if (!user) {
-      throw new NotFoundException('User with this email does not exist');
+      return ApiResponse.error('Invalid or expired OTP.');
     }
 
-    // Here you would typically verify the OTP
-    // For simplicity, we'll assume the OTP is always valid
+    const isValidOtp = await this.verificationModuleService.verifyOtp(
+      email,
+      VerificationPurpose.RESET_PASSWORD,
+      otp,
+    );
 
-    const hashedPassword = await this.hashValue(password);
-    user.password = hashedPassword;
-    await user.save();
+    if (!isValidOtp) {
+      return ApiResponse.error('Invalid or expired OTP.');
+    }
 
-    return ApiResponse.success('Password has been reset successfully', {});
-  }
+    const hashedPassword = await hashValue(password);
+    
+    await this.userModel.updateOne(
+  { _id: user._id },
+  { $set: { password: hashedPassword } },
+);
 
-  async hashValue(password: string): Promise<string> {
-    return bcrypt.hash(password, 10);
-  }
-
-  async compareValue(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
+    return ApiResponse.success('Password reset successfully', null);
   }
 }
