@@ -3,6 +3,7 @@ import { Model, Types } from 'mongoose';
 import { AttendanceLog } from './schemas/attendance-log.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import ApiResponse from '../../utils/ApiResponse';
+import { date } from 'joi';
 
 @Injectable()
 export class AttendanceService {
@@ -23,7 +24,7 @@ export class AttendanceService {
     sortOrder: 'asc' | 'desc' = 'desc',
   ) {
     this.validateUserId(userId);
-
+  
     // Validate pagination params
     const validPage = Math.max(1, page);
     const validLimit = Math.min(Math.max(1, limit), 100); 
@@ -43,6 +44,8 @@ export class AttendanceService {
       .limit(validLimit)
       .lean();
 
+      
+
     const formattedLogs = logs.map((log) => ({
       id: log._id.toString(),
       userId: log.userId.toString(),
@@ -50,6 +53,7 @@ export class AttendanceService {
       sessions: log.sessions,
       totalMinutes: log.totalMinutes,
       entryExitTotalMinutes: log.entryExitTotalMinutes,
+      attendanceStatus:  this.determineAttendanceStatus(log.totalMinutes, log.sessions),
     }));
 
     const totalPages = Math.ceil(totalRecords / validLimit);
@@ -84,6 +88,7 @@ export class AttendanceService {
       throw new BadRequestException('Invalid user ID format');
     }
   }
+
   async checkIn(userId: string) {
     this.validateUserId(userId);
     const today = this.normalizeDate(new Date());
@@ -211,4 +216,27 @@ export class AttendanceService {
     const total = Math.floor((endTime - startTime) / (1000 * 60));
     return total;
   }
+
+ private calculateHours(endTime: number, startTime: number): number {
+    const total = (endTime - startTime) / (1000 * 60 * 60);
+    return total;
+  }
+  private determineAttendanceStatus(totalMinutes: number, sessions?: any[]): string {
+   
+    // If any session has checkOut === null, return 'inProgress'
+    if (sessions && sessions.some((s) => s.checkOut === null)) {
+      return 'inProgress';
+    }
+    if (totalMinutes >= 510) { // 8.5 hours or more
+      return 'present';
+    } else if (totalMinutes >= 270) { // 4.5 to 8.5 hours
+      return 'half-day';
+    } else if (totalMinutes === 0) {
+      return 'holiday'; // No attendance means it's a holiday
+    } else {
+      return 'absent'; // Treat less than 4.5 hours as absent
+    }
+  }
+
+
 }
